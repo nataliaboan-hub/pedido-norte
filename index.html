@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bierlife — Pedido de botellas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E7DBBE;
+    --paper-light:#F1E8D2;
+    --ink:#241B12;
+    --ink-soft:#5B4E3B;
+    --bottle:#1D3B2D;
+    --bottle-light:#2C4F3B;
+    --copper:#A85C2E;
+    --copper-dark:#8A4620;
+    --hop:#6B7F4B;
+    --line:rgba(36,27,18,0.18);
+    --whatsapp:#2E7D4F;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+
+  body{
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.15), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0,0,0,0.05), transparent 45%);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    line-height:1.4;
+    padding-bottom:100px;
+  }
+
+  .page{
+    max-width:880px;
+    margin:0 auto;
+    padding:0 20px;
+  }
+
+  /* ---------- Header / label banner ---------- */
+  .label-banner{
+    background:var(--bottle);
+    background-image:linear-gradient(135deg, var(--bottle) 0%, var(--bottle-light) 100%);
+    margin:0 -20px 32px -20px;
+    padding:38px 20px 44px 20px;
+    text-align:center;
+    position:relative;
+    border-bottom:6px solid var(--copper);
+  }
+  .label-banner::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-6px;
+    height:6px;
+  }
+  .logo-img{
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    display:block;
+    margin:0 auto 14px auto;
+    box-shadow:0 3px 0 rgba(0,0,0,0.25);
+    background:var(--paper-light);
+  }
+  .sr-only{
+    position:absolute;
+    width:1px; height:1px;
+    padding:0; margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+  .label-banner h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    font-size:clamp(28px, 5vw, 42px);
+    color:var(--paper-light);
+    margin:0 0 6px 0;
+  }
+  .label-banner p{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--copper);
+    font-size:13px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    margin:0;
+  }
+
+  /* ---------- Section headers ---------- */
+  h2.section-title{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    font-size:20px;
+    color:var(--bottle);
+    margin:0 0 4px 0;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  h2.section-title .num{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--copper);
+    font-size:14px;
+  }
+  .rule{
+    height:1px;
+    background:var(--line);
+    margin:12px 0 24px 0;
+  }
+  section{margin-bottom:36px;}
+
+  /* ---------- Form ---------- */
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px 20px;
+  }
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  label{
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+  }
+  label .req{color:var(--copper);}
+  input[type=text], input[type=tel], input[type=email], textarea{
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:11px 12px;
+    font-family:'Inter', sans-serif;
+    font-size:15px;
+    color:var(--ink);
+  }
+  input:focus, textarea:focus{
+    outline:2px solid var(--copper);
+    outline-offset:1px;
+  }
+  textarea{resize:vertical; min-height:70px;}
+
+  .radio-toggle{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:4px;
+  }
+  .radio-toggle label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--paper-light);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:10px 14px;
+    cursor:pointer;
+    text-transform:none;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+    flex:1;
+    min-width:160px;
+  }
+  .radio-toggle input{accent-color:var(--copper);}
+
+  /* ---------- Product table ---------- */
+  table.products{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--paper-light);
+  }
+  table.products thead th{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    font-size:12px;
+    letter-spacing:0.06em;
+    color:var(--paper-light);
+    background:var(--bottle);
+    text-align:left;
+    padding:11px 14px;
+  }
+  table.products thead th.num-col{text-align:center;}
+  table.products tbody td{
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  table.products tbody tr:last-child td{border-bottom:none;}
+  .prod-name{font-weight:600;}
+  .prod-style{
+    display:block;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:400;
+  }
+  .price-cell{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .prod-price-inline{display:none;}
+
+  .stock-label{
+    display:block;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--copper-dark);
+    margin-top:2px;
+  }
+  tr.agotado{opacity:0.55;}
+  .qty-btn:disabled, .qty-input:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+
+  .qty-control{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .qty-btn{
+    width:28px; height:28px;
+    border:1px solid var(--copper);
+    background:var(--paper-light);
+    color:var(--copper);
+    border-radius:3px;
+    font-size:16px;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .qty-btn:hover{background:var(--copper); color:var(--paper-light);}
+  .qty-input{
+    width:42px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:5px 2px;
+    background:#fff;
+  }
+
+  /* mobile card layout for table */
+  @media (max-width:640px){
+    table.products thead{display:none;}
+    table.products, table.products tbody, table.products tr, table.products td{
+      display:block;
+      width:100%;
+    }
+    table.products tr{
+      border:1px solid var(--line);
+      border-radius:4px;
+      margin-bottom:10px;
+      padding:10px 12px;
+    }
+    table.products td{
+      border:none;
+      padding:6px 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    table.products td::before{
+      content:attr(data-label);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:0.05em;
+      color:var(--ink-soft);
+      font-weight:600;
+    }
+    table.products td.prod-cell{
+      flex-direction:column;
+      align-items:flex-start;
+      gap:3px;
+    }
+    table.products td.price-cell{
+      display:none;
+    }
+    .prod-name{
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+    }
+    .prod-price-inline{
+      display:inline;
+      font-family:'JetBrains Mono', monospace;
+      font-weight:700;
+      font-size:14px;
+      color:var(--bottle);
+    }
+    .form-grid{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Sticky total bar ---------- */
+  .total-bar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    background:var(--bottle);
+    border-top:4px solid var(--copper);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:24px;
+    flex-wrap:wrap;
+    z-index:10;
+  }
+  .total-info{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    color:var(--paper-light);
+  }
+  .total-info .label{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:13px;
+  }
+  .total-info .amount{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:24px;
+    color:var(--copper);
+  }
+  .send-btn{
+    background:var(--whatsapp);
+    color:#fff;
+    border:none;
+    padding:13px 22px;
+    border-radius:4px;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+  }
+  .send-btn:hover{filter:brightness(1.08);}
+  .send-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .send-btn svg{width:18px;height:18px;fill:#fff;}
+
+  /* ---------- Aviso centrado (éxito / error) ---------- */
+  .toast-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(36,27,18,0.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:60;
+    padding:20px;
+  }
+  .toast-overlay.show{display:flex;}
+  .toast-box{
+    background:var(--paper-light);
+    border-radius:6px;
+    border-top:4px solid var(--hop);
+    padding:28px 24px;
+    max-width:380px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
+  .toast-box.error{border-top-color:var(--copper-dark);}
+  .toast-box p{
+    color:var(--ink);
+    font-size:14px;
+    line-height:1.5;
+    margin:0 0 20px 0;
+  }
+  .toast-close-btn{
+    background:var(--bottle);
+    color:#fff;
+    border:none;
+    padding:10px 22px;
+    border-radius:4px;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .toast-close-btn:hover{filter:brightness(1.15);}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="label-banner">
+    <img src="logo-bierlife.jpg" alt="Bierlife" class="logo-img">
+    <h1 class="sr-only">Bierlife</h1>
+    <p>Pedido de botellas para mayorista</p>
+  </header>
+
+  <!-- ===================== DATOS DEL CLIENTE ===================== -->
+  <section>
+    <h2 class="section-title"><span class="num">01</span> Tus datos</h2>
+    <div class="rule"></div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Nombre <span class="req">*</span></label>
+        <input type="text" id="f-nombre" placeholder="Ej: Juan Pérez">
+      </div>
+      <div class="field">
+        <label>Teléfono <span class="req">*</span></label>
+        <input type="tel" id="f-telefono" placeholder="Ej: 11 2345 6789">
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PRODUCTOS (dinámico según la planilla) ===================== -->
+  <div id="products-container">
+    <p id="loading-msg" style="text-align:center; color:var(--ink-soft); padding:20px 0;">Cargando productos…</p>
+  </div>
+
+</div>
+
+<div class="total-bar">
+  <div class="total-info">
+    <span class="label">Total del pedido</span>
+    <span class="amount" id="total-amount">$0</span>
+  </div>
+  <button class="send-btn" id="send-btn">
+    <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.5.1-.3-.1-1.2-.4-2.3-1.4-.8-.8-1.4-1.7-1.6-2-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.4.1-.2 0-.4 0-.5C11 9 10.5 7.7 10.3 7.2c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s1 2.5 1.1 2.7c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.5-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.6 1.4 5.1L2 22l5-1.3c1.4.8 3.1 1.2 4.9 1.2h.1c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2h-.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3.3.9.9-3.2-.2-.3c-.9-1.4-1.4-3-1.4-4.7C3.1 6.9 7 3.1 12 3.1c2.4 0 4.7.9 6.4 2.7 1.7 1.7 2.7 4 2.7 6.4-.1 5-4 8.6-9.1 8.6z"/></svg>
+    Enviar pedido por WhatsApp
+  </button>
+</div>
+
+<div class="toast-overlay" id="order-toast">
+  <div class="toast-box" id="order-toast-box">
+    <p id="order-toast-text"></p>
+    <button type="button" id="order-toast-close" class="toast-close-btn">Cerrar</button>
+  </div>
+</div>
+
+<script>
+  // ============ CONFIGURACIÓN ============
+  // Link de "Publicar en la Web" (formato CSV) de la planilla con el catálogo completo.
+  // La planilla debe tener las columnas: id, nombre, estilo, tamaño, precio, stock, activo
+  const CATALOG_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSyPcW6__Y83Y2VEMh4oDIc8lcBviixjQGTKzlr3tDNG9_lA_Ju-opzToKmxuaTlyK3vBKNRMrFpqHR/pub?gid=561970596&single=true&output=csv";
+
+  // Orden fijo en el que aparecen las secciones si esos tamaños existen en la planilla.
+  // Cualquier tamaño nuevo que agreguen (ej: "Barril") aparece solo, al final.
+  const SIZE_ORDER = ["500ml", "1L", "Lata"];
+  const SIZE_LABELS = {
+    "500ml": "Botellas de medio litro",
+    "1L": "Botellas de un litro",
+    "Lata": "Latas",
+  };
+
+  // URL del Apps Script (termina en /exec) que guarda cada pedido en la planilla de historial
+  const ORDERS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwvfouO_-NGBDynGwjX_hRDzLQZkfNNwFd1VjCicorW8sAXXpcjKlrfKZAtAWgmfIq9/exec";
+
+  function logOrder(nombre, telefono, groupsWithItems, total){
+    if(ORDERS_SCRIPT_URL.includes("PEGAR_ACA")) return; // todavía no configurado
+    const items = [];
+    groupsWithItems.forEach(g => {
+      g.items.forEach(p => items.push({ id: p.id, name: p.name, size: g.size, qty: p.qty, price: p.price }));
+    });
+    const payload = {
+      fecha: new Date().toISOString(),
+      pedidoId: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      nombre, telefono, items, total,
+    };
+    fetch(ORDERS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: JSON.stringify(payload),
+    }).catch(err => console.warn("No se pudo registrar el pedido en el historial:", err));
+  }
+
+  const fmt = n => "$" + n.toLocaleString("es-AR");
+
+  function parsePrice(raw){
+    if(raw === undefined || raw === null) return 0;
+    let s = raw.toString().trim().replace(/[^\d.,-]/g, "");
+    if(s === "") return 0;
+    if(s.includes(".") && s.includes(",")){
+      // formato "4.200,50" -> punto de miles, coma decimal
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if(s.includes(",") && !s.includes(".")){
+      // formato "4200,50" -> coma decimal
+      s = s.replace(",", ".");
+    } else if(s.includes(".")){
+      const parts = s.split(".");
+      // "4.200" (grupo de 3 dígitos) se interpreta como separador de miles
+      if(parts.length > 1 && parts[parts.length - 1].length === 3){
+        s = s.replace(/\./g, "");
+      }
+    }
+    const num = parseFloat(s);
+    return isNaN(num) ? 0 : Math.round(num);
+  }
+
+  // ---------- Parser de CSV (soporta campos entre comillas con comas adentro) ----------
+  function parseCSV(text){
+    const rows = [];
+    let field = "", row = [], inQuotes = false;
+    for(let i = 0; i < text.length; i++){
+      const c = text[i];
+      if(inQuotes){
+        if(c === '"' && text[i+1] === '"'){ field += '"'; i++; }
+        else if(c === '"'){ inQuotes = false; }
+        else { field += c; }
+      } else {
+        if(c === '"'){ inQuotes = true; }
+        else if(c === ','){ row.push(field); field = ""; }
+        else if(c === '\r'){ /* ignorar */ }
+        else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+        else { field += c; }
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(r => r.some(c => c.trim() !== ""));
+  }
+
+  function rowsToObjects(rows){
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    return rows.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (r[i] || "").trim());
+      return obj;
+    });
+  }
+
+  let PRODUCTS = [];
+  let PRODUCTS_BY_SIZE = [];
+  const currentStock = {};
+
+  function clampToStock(id, qty){
+    const max = currentStock[id];
+    if(max === undefined) return Math.max(0, qty);
+    return Math.min(Math.max(0, qty), Math.max(0, max));
+  }
+
+  function getQty(id){
+    const el = document.getElementById(`qty-${id}`);
+    if(!el) return 0;
+    const v = parseInt(el.value, 10);
+    return isNaN(v) || v < 0 ? 0 : v;
+  }
+
+  function recalc(){
+    let total = 0;
+    PRODUCTS.forEach(p => {
+      total += getQty(p.id) * p.price;
+    });
+    document.getElementById("total-amount").textContent = fmt(total);
+    return total;
+  }
+
+  function applyStockToRow(p){
+    const row = document.getElementById(`row-${p.id}`);
+    const qtyInput = document.getElementById(`qty-${p.id}`);
+    const stockLabel = document.getElementById(`stock-${p.id}`);
+    if(!row || !qtyInput) return;
+    const btns = row.querySelectorAll(".qty-btn");
+
+    if(p.stock === undefined){
+      qtyInput.disabled = false;
+      btns.forEach(b => b.disabled = false);
+      row.classList.remove("agotado");
+      if(stockLabel) stockLabel.textContent = "";
+      return;
+    }
+
+    if(p.stock <= 0){
+      qtyInput.value = 0;
+      qtyInput.disabled = true;
+      btns.forEach(b => b.disabled = true);
+      row.classList.add("agotado");
+      if(stockLabel) stockLabel.textContent = "Agotado";
+    } else {
+      qtyInput.disabled = false;
+      btns.forEach(b => b.disabled = false);
+      row.classList.remove("agotado");
+      if(stockLabel) stockLabel.textContent = "";
+      qtyInput.value = clampToStock(p.id, getQty(p.id));
+    }
+  }
+
+  function renderProductRow(p, tbody){
+    const tr = document.createElement("tr");
+    tr.id = `row-${p.id}`;
+    tr.innerHTML = `
+      <td data-label="Producto" class="prod-cell">
+        <span class="prod-name">${p.name}<span class="prod-price-inline">${fmt(p.price)}</span></span>
+        ${p.style ? `<span class="prod-style">${p.style}</span>` : ""}
+      </td>
+      <td data-label="Precio" class="price-cell">
+        ${fmt(p.price)}
+        <span class="stock-label" id="stock-${p.id}"></span>
+      </td>
+      <td data-label="Cantidad">
+        <div class="qty-control">
+          <button type="button" class="qty-btn" data-action="minus" data-id="${p.id}">−</button>
+          <input type="text" inputmode="numeric" class="qty-input" id="qty-${p.id}" value="0" data-id="${p.id}">
+          <button type="button" class="qty-btn" data-action="plus" data-id="${p.id}">+</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function renderCatalog(){
+    const container = document.getElementById("products-container");
+    container.innerHTML = "";
+
+    if(PRODUCTS.length === 0){
+      container.innerHTML = `<p style="text-align:center; color:var(--ink-soft); padding:20px 0;">No hay productos cargados todavía.</p>`;
+      return;
+    }
+
+    PRODUCTS_BY_SIZE.forEach((group, idx) => {
+      const section = document.createElement("section");
+      const label = SIZE_LABELS[group.size] || group.size;
+      const num = String(idx + 2).padStart(2, "0"); // sección 01 es "Tus datos"
+      section.innerHTML = `
+        <h2 class="section-title"><span class="num">${num}</span> ${label}</h2>
+        <div class="rule"></div>
+        <table class="products">
+          <thead>
+            <tr>
+              <th>Producto (${group.size})</th>
+              <th class="num-col">Precio</th>
+              <th class="num-col">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody id="rows-${idx}"></tbody>
+        </table>
+      `;
+      container.appendChild(section);
+      const tbody = section.querySelector(`#rows-${idx}`);
+      group.items.forEach(p => renderProductRow(p, tbody));
+
+      tbody.addEventListener("click", e => {
+        const btn = e.target.closest(".qty-btn");
+        if(!btn) return;
+        const id = btn.dataset.id;
+        const input = document.getElementById(`qty-${id}`);
+        let v = getQty(id);
+        v = btn.dataset.action === "plus" ? v + 1 : Math.max(0, v - 1);
+        v = clampToStock(id, v);
+        input.value = v;
+        recalc();
+      });
+
+      tbody.addEventListener("input", e => {
+        if(e.target.classList.contains("qty-input")){
+          const id = e.target.dataset.id;
+          e.target.value = clampToStock(id, getQty(id));
+          recalc();
+        }
+      });
+    });
+
+    PRODUCTS.forEach(applyStockToRow);
+    recalc();
+  }
+
+  function groupBySize(products){
+    const groups = {};
+    products.forEach(p => {
+      const key = p.size || "Otros";
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    const orderedKeys = [
+      ...SIZE_ORDER.filter(k => groups[k]),
+      ...Object.keys(groups).filter(k => !SIZE_ORDER.includes(k)),
+    ];
+    return orderedKeys.map(key => ({ size: key, items: groups[key] }));
+  }
+
+  async function loadCatalog(){
+    try{
+      const sep = CATALOG_SHEET_CSV_URL.includes("?") ? "&" : "?";
+      const res = await fetch(CATALOG_SHEET_CSV_URL + sep + "t=" + Date.now());
+      const text = await res.text();
+      const objs = rowsToObjects(parseCSV(text));
+
+      PRODUCTS = objs
+        .filter(o => o.id && (o.activo || "").toLowerCase() !== "no")
+        .map(o => {
+          const stockVal = parseInt(o.stock, 10);
+          return {
+            id: o.id,
+            name: o.nombre,
+            style: o.estilo || "",
+            size: o["tamaño"] || o["tamano"] || "Otros",
+            price: parsePrice(o.precio),
+            stock: isNaN(stockVal) ? undefined : stockVal,
+          };
+        });
+
+      PRODUCTS.forEach(p => { currentStock[p.id] = p.stock; });
+      PRODUCTS_BY_SIZE = groupBySize(PRODUCTS);
+      renderCatalog();
+    }catch(err){
+      const container = document.getElementById("products-container");
+      container.innerHTML = `<p style="text-align:center; color:var(--copper-dark); padding:20px 0;">No se pudo cargar el catálogo. Revisá tu conexión y recargá la página.</p>`;
+      console.warn("Error cargando el catálogo desde Google Sheets:", err);
+    }
+  }
+
+  loadCatalog();
+  // Vuelve a leer la planilla cada 60 segundos por si un cliente deja la página abierta
+  setInterval(loadCatalog, 60000);
+
+  // ============ ENVÍO POR WHATSAPP ============
+  // Reemplazá este número por el WhatsApp de tu local (código de país + número, sin +, sin espacios)
+  const STORE_WHATSAPP = "5491131967575";
+
+  function showToast(type, text){
+    document.getElementById("order-toast-text").textContent = text;
+    document.getElementById("order-toast-box").classList.toggle("error", type === "error");
+    document.getElementById("order-toast").classList.add("show");
+  }
+  document.getElementById("order-toast-close").addEventListener("click", () => {
+    document.getElementById("order-toast").classList.remove("show");
+  });
+
+  document.getElementById("send-btn").addEventListener("click", () => {
+    const nombre = document.getElementById("f-nombre").value.trim();
+    const telefono = document.getElementById("f-telefono").value.trim();
+
+    const faltanDatos = !nombre || !telefono;
+
+    const groupsWithItems = PRODUCTS_BY_SIZE.map(g => ({
+      size: g.size,
+      items: g.items.map(p => ({ ...p, qty: getQty(p.id) })).filter(p => p.qty > 0),
+    })).filter(g => g.items.length > 0);
+
+    if(faltanDatos || groupsWithItems.length === 0){
+      showToast("error", faltanDatos
+        ? "Completá tu nombre y teléfono para continuar."
+        : "Elegí al menos un producto para enviar el pedido.");
+      return;
+    }
+
+    const total = recalc();
+
+    let msg = `*Nuevo pedido — Bierlife*\n\n`;
+    msg += `*Nombre:* ${nombre}\n`;
+    msg += `*Teléfono:* ${telefono}\n\n`;
+
+    groupsWithItems.forEach(g => {
+      msg += `*${SIZE_LABELS[g.size] || g.size}*\n`;
+      g.items.forEach(p => {
+        msg += `• ${p.name} x${p.qty} — ${fmt(p.qty * p.price)}\n`;
+      });
+      msg += `\n`;
+    });
+    msg += `*Total: ${fmt(total)}*`;
+
+    logOrder(nombre, telefono, groupsWithItems, total);
+
+    showToast("success", "¡Listo! Te llevamos a WhatsApp con tu pedido armado — confirmá el envío ahí para completarlo.");
+
+    const waUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, "_blank");
+
+    PRODUCTS.forEach(p => {
+      const el = document.getElementById(`qty-${p.id}`);
+      if(el) el.value = 0;
+    });
+    recalc();
+  });
+</script>
+
+</body>
+</html>
