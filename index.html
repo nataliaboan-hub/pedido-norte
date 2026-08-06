@@ -255,6 +255,100 @@
     background:#fff;
   }
 
+  /* ---------- Caja personalizada ---------- */
+  .custom-box-help{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:0 0 20px 0;
+    line-height:1.5;
+  }
+  .custom-box-widget{
+    background:var(--paper-light);
+    border-radius:4px;
+    padding:18px;
+    margin-bottom:18px;
+  }
+  .custom-box-title{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    font-size:15px;
+    color:var(--bottle);
+    margin:0 0 12px 0;
+  }
+  .custom-box-form{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .custom-select{
+    flex:1;
+    min-width:160px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:#fff;
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .custom-qty-picker{
+    width:64px;
+    padding:9px 8px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:#fff;
+    font-family:'JetBrains Mono', monospace;
+    text-align:center;
+  }
+  .custom-add-btn{
+    background:var(--copper);
+    color:#fff;
+    border:none;
+    padding:9px 18px;
+    border-radius:3px;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .custom-add-btn:hover{filter:brightness(1.08);}
+  .custom-empty{
+    font-size:13px;
+    color:var(--ink-soft);
+    font-style:italic;
+    margin:6px 0;
+  }
+  .custom-item-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .custom-item-row:last-child{border-bottom:none;}
+  .custom-item-name{font-weight:600; flex:1;}
+  .custom-item-price{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .custom-progress{
+    font-size:13px;
+    font-weight:600;
+    margin:12px 0 0 0;
+  }
+  .custom-progress.warn{color:var(--copper-dark);}
+  .custom-progress.ok{color:var(--hop);}
+
+  @media (max-width:640px){
+    .custom-box-form{flex-direction:column;}
+    .custom-select, .custom-qty-picker, .custom-add-btn{width:100%;}
+  }
+
   /* mobile card layout for table */
   @media (max-width:640px){
     table.products thead{display:none;}
@@ -406,7 +500,7 @@
   <header class="label-banner">
     <img src="logo-bierlife.jpg" alt="Bierlife" class="logo-img">
     <h1 class="sr-only">Bierlife</h1>
-    <p>Pedido de botellas para mayorista</p>
+    <p>Hacé tu pedido de cerveza artesanal</p>
   </header>
 
   <!-- ===================== DATOS DEL CLIENTE ===================== -->
@@ -460,20 +554,24 @@
   // Cualquier tamaño nuevo que agreguen (ej: "Barril") aparece solo, al final.
   const SIZE_ORDER = ["500ml", "1L", "Lata"];
   const SIZE_LABELS = {
-    "500ml": "Botellas de medio litro",
-    "1L": "Botellas de un litro",
-    "Lata": "Latas",
+    "500ml": "Caja de 12 botellas de 500ml",
+    "1L": "Caja de 12 botellas de 1L",
+    "Lata": "Caja de 12 latas",
+    "Merch": "Merchandising",
   };
+  // Tamaños que se venden por caja cerrada de 12 unidades (no por botella/lata suelta)
+  const BOXABLE_SIZES = ["500ml", "1L", "Lata"];
+  const UNITS_PER_BOX = 12;
+  function isBoxable(size){ return BOXABLE_SIZES.includes(size); }
+  // Nombres cortos para usar en frases tipo "Caja personalizada — {size}"
+  const SIZE_SHORT_LABELS = { "500ml": "500ml", "1L": "1L", "Lata": "latas" };
+  function shortSizeLabel(size){ return SIZE_SHORT_LABELS[size] || size; }
 
   // URL del Apps Script (termina en /exec) que guarda cada pedido en la planilla de historial
   const ORDERS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwvfouO_-NGBDynGwjX_hRDzLQZkfNNwFd1VjCicorW8sAXXpcjKlrfKZAtAWgmfIq9/exec";
 
-  function logOrder(nombre, telefono, groupsWithItems, total){
+  function logOrder(nombre, telefono, items, total){
     if(ORDERS_SCRIPT_URL.includes("PEGAR_ACA")) return; // todavía no configurado
-    const items = [];
-    groupsWithItems.forEach(g => {
-      g.items.forEach(p => items.push({ id: p.id, name: p.name, size: g.size, qty: p.qty, price: p.price }));
-    });
     const payload = {
       fecha: new Date().toISOString(),
       pedidoId: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
@@ -542,12 +640,29 @@
 
   let PRODUCTS = [];
   let PRODUCTS_BY_SIZE = [];
-  const currentStock = {};
+  const customBoxData = {}; // id -> cantidad de botellas elegidas en la caja personalizada
+
+  // ---------- Límites de stock (compartido entre caja de sabor único y caja personalizada) ----------
+  function maxBoxesFor(p){
+    // Máximo de CAJAS que se pueden pedir de este sabor, restando lo ya reservado en la caja personalizada
+    if(p.stock === undefined) return Infinity;
+    const reservedByCustom = customBoxData[p.id] || 0;
+    return Math.max(0, Math.floor((p.stock - reservedByCustom) / UNITS_PER_BOX));
+  }
+
+  function maxCustomAllowed(p){
+    // Máximo de BOTELLAS que se pueden asignar a este sabor en la caja personalizada,
+    // restando lo ya reservado en cajas de sabor único
+    if(p.stock === undefined) return Infinity;
+    const reservedByBoxes = isBoxable(p.size) ? getQty(p.id) * UNITS_PER_BOX : 0;
+    return Math.max(0, p.stock - reservedByBoxes);
+  }
 
   function clampToStock(id, qty){
-    const max = currentStock[id];
-    if(max === undefined) return Math.max(0, qty);
-    return Math.min(Math.max(0, qty), Math.max(0, max));
+    const p = PRODUCTS.find(x => x.id === id);
+    if(!p || p.stock === undefined) return Math.max(0, qty);
+    const maxAllowed = isBoxable(p.size) ? maxBoxesFor(p) : p.stock;
+    return Math.min(Math.max(0, qty), maxAllowed);
   }
 
   function getQty(id){
@@ -557,10 +672,21 @@
     return isNaN(v) || v < 0 ? 0 : v;
   }
 
+  function displayPrice(p){
+    return isBoxable(p.size) ? p.price * UNITS_PER_BOX : p.price;
+  }
+
   function recalc(){
     let total = 0;
     PRODUCTS.forEach(p => {
-      total += getQty(p.id) * p.price;
+      const qty = getQty(p.id);
+      total += isBoxable(p.size) ? qty * p.price * UNITS_PER_BOX : qty * p.price;
+    });
+    Object.keys(customBoxData).forEach(id => {
+      const qty = customBoxData[id];
+      if(!qty) return;
+      const p = PRODUCTS.find(x => x.id === id);
+      if(p) total += qty * p.price;
     });
     document.getElementById("total-amount").textContent = fmt(total);
     return total;
@@ -581,7 +707,9 @@
       return;
     }
 
-    if(p.stock <= 0){
+    const maxAllowed = isBoxable(p.size) ? maxBoxesFor(p) : p.stock;
+
+    if(maxAllowed <= 0){
       qtyInput.value = 0;
       qtyInput.disabled = true;
       btns.forEach(b => b.disabled = true);
@@ -596,19 +724,20 @@
     }
   }
 
-  function renderProductRow(p, tbody){
+  function renderProductRow(p, tbody, boxable){
     const tr = document.createElement("tr");
     tr.id = `row-${p.id}`;
+    const priceToShow = displayPrice(p);
     tr.innerHTML = `
       <td data-label="Producto" class="prod-cell">
-        <span class="prod-name">${p.name}<span class="prod-price-inline">${fmt(p.price)}</span></span>
+        <span class="prod-name">${p.name}<span class="prod-price-inline">${fmt(priceToShow)}</span></span>
         ${p.style ? `<span class="prod-style">${p.style}</span>` : ""}
       </td>
-      <td data-label="Precio" class="price-cell">
-        ${fmt(p.price)}
+      <td data-label="${boxable ? 'Precio por caja' : 'Precio'}" class="price-cell">
+        ${fmt(priceToShow)}
         <span class="stock-label" id="stock-${p.id}"></span>
       </td>
-      <td data-label="Cantidad">
+      <td data-label="${boxable ? 'Cantidad de cajas' : 'Cantidad'}">
         <div class="qty-control">
           <button type="button" class="qty-btn" data-action="minus" data-id="${p.id}">−</button>
           <input type="text" inputmode="numeric" class="qty-input" id="qty-${p.id}" value="0" data-id="${p.id}">
@@ -617,6 +746,191 @@
       </td>
     `;
     tbody.appendChild(tr);
+  }
+
+  function renderProductSection(group, num, container, boxable){
+    const section = document.createElement("section");
+    const label = SIZE_LABELS[group.size] || group.size;
+    const numStr = String(num).padStart(2, "0");
+    const prodHeader = "Producto";
+    const priceHeader = boxable ? "Precio por caja" : "Precio";
+    const qtyHeader = boxable ? "Cantidad de cajas" : "Cantidad";
+    section.innerHTML = `
+      <h2 class="section-title"><span class="num">${numStr}</span> ${label}</h2>
+      <div class="rule"></div>
+      <table class="products">
+        <thead>
+          <tr>
+            <th>${prodHeader}</th>
+            <th class="num-col">${priceHeader}</th>
+            <th class="num-col">${qtyHeader}</th>
+          </tr>
+        </thead>
+        <tbody id="rows-${group.size}"></tbody>
+      </table>
+    `;
+    container.appendChild(section);
+    const tbody = section.querySelector(`#rows-${group.size}`);
+    group.items.forEach(p => renderProductRow(p, tbody, boxable));
+
+    tbody.addEventListener("click", e => {
+      const btn = e.target.closest(".qty-btn");
+      if(!btn) return;
+      const id = btn.dataset.id;
+      const input = document.getElementById(`qty-${id}`);
+      let v = getQty(id);
+      v = btn.dataset.action === "plus" ? v + 1 : Math.max(0, v - 1);
+      v = clampToStock(id, v);
+      input.value = v;
+      recalc();
+    });
+
+    tbody.addEventListener("input", e => {
+      if(e.target.classList.contains("qty-input")){
+        const id = e.target.dataset.id;
+        e.target.value = clampToStock(id, getQty(id));
+        recalc();
+      }
+    });
+  }
+
+  // ---------- Caja personalizada ----------
+  function renderCustomList(size){
+    const container = document.getElementById(`customlist-${size}`);
+    if(!container) return;
+    const items = PRODUCTS.filter(p => p.size === size && (customBoxData[p.id] || 0) > 0);
+    if(items.length === 0){
+      container.innerHTML = `<p class="custom-empty">Todavía no agregaste ningún sabor.</p>`;
+      return;
+    }
+    container.innerHTML = items.map(p => `
+      <div class="custom-item-row">
+        <span class="custom-item-name">${p.name}</span>
+        <span class="custom-item-price">${fmt(p.price)}</span>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" data-action="minus" data-id="${p.id}">−</button>
+          <input type="text" inputmode="numeric" class="qty-input custom-qty-input-row" data-id="${p.id}" value="${customBoxData[p.id]}">
+          <button type="button" class="qty-btn" data-action="plus" data-id="${p.id}">+</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function updateCustomProgress(size){
+    const el = document.getElementById(`customprogress-${size}`);
+    if(!el) return;
+    const total = PRODUCTS.filter(p => p.size === size).reduce((sum, p) => sum + (customBoxData[p.id] || 0), 0);
+    if(total === 0){
+      el.textContent = "";
+      el.className = "custom-progress";
+      return;
+    }
+    const rem = total % UNITS_PER_BOX;
+    if(rem === 0){
+      el.textContent = `✅ Caja completa — ${total} botellas`;
+      el.className = "custom-progress ok";
+    } else {
+      const falta = UNITS_PER_BOX - rem;
+      el.textContent = `Te faltan ${falta} botellas para completar la caja personalizada de ${shortSizeLabel(size)}`;
+      el.className = "custom-progress warn";
+    }
+  }
+
+  function handleAddCustom(size){
+    const select = document.getElementById(`customselect-${size}`);
+    const qtyPicker = document.getElementById(`customqtypicker-${size}`);
+    const id = select.value;
+    if(!id) return;
+    const want = parseInt(qtyPicker.value, 10);
+    if(isNaN(want) || want <= 0) return;
+    const p = PRODUCTS.find(x => x.id === id);
+    if(!p) return;
+
+    const maxAllowed = maxCustomAllowed(p);
+    const current = customBoxData[id] || 0;
+    const finalQty = Math.min(current + want, maxAllowed);
+    if(finalQty > 0) customBoxData[id] = finalQty;
+
+    select.value = "";
+    qtyPicker.value = 1;
+
+    renderCustomList(size);
+    updateCustomProgress(size);
+    applyStockToRow(p);
+    recalc();
+  }
+
+  function renderCustomBoxSection(container, sizesPresent, num){
+    if(sizesPresent.length === 0) return;
+    const section = document.createElement("section");
+    const numStr = String(num).padStart(2, "0");
+
+    const widgetsHtml = sizesPresent.map(size => {
+      const productsOfSize = PRODUCTS.filter(p => p.size === size);
+      const options = productsOfSize.map(p => `<option value="${p.id}">${p.name} ${fmt(p.price)}</option>`).join("");
+      return `
+        <div class="custom-box-widget">
+          <h3 class="custom-box-title">Caja personalizada — ${shortSizeLabel(size)}</h3>
+          <div class="custom-box-form">
+            <select class="custom-select" id="customselect-${size}">
+              <option value="">Elegí un sabor…</option>
+              ${options}
+            </select>
+            <input type="number" min="1" value="1" class="custom-qty-picker" id="customqtypicker-${size}">
+            <button type="button" class="custom-add-btn" id="customadd-${size}">Agregar</button>
+          </div>
+          <div class="custom-item-list" id="customlist-${size}"></div>
+          <p class="custom-progress" id="customprogress-${size}"></p>
+        </div>
+      `;
+    }).join("");
+
+    section.innerHTML = `
+      <h2 class="section-title"><span class="num">${numStr}</span> Armá tu caja personalizada</h2>
+      <div class="rule"></div>
+      <p class="custom-box-help">Elegí distintos sabores para completar cajas de ${UNITS_PER_BOX} botellas. Podés combinar los que quieras, siempre que el total sea múltiplo de ${UNITS_PER_BOX}.</p>
+      ${widgetsHtml}
+    `;
+    container.appendChild(section);
+
+    sizesPresent.forEach(size => {
+      document.getElementById(`customadd-${size}`).addEventListener("click", () => handleAddCustom(size));
+
+      const listEl = document.getElementById(`customlist-${size}`);
+      listEl.addEventListener("click", e => {
+        const btn = e.target.closest(".qty-btn");
+        if(!btn) return;
+        const id = btn.dataset.id;
+        const p = PRODUCTS.find(x => x.id === id);
+        if(!p) return;
+        let v = customBoxData[id] || 0;
+        v = btn.dataset.action === "plus" ? v + 1 : v - 1;
+        v = Math.min(Math.max(0, v), maxCustomAllowed(p));
+        if(v <= 0) delete customBoxData[id]; else customBoxData[id] = v;
+        renderCustomList(size);
+        updateCustomProgress(size);
+        applyStockToRow(p);
+        recalc();
+      });
+
+      listEl.addEventListener("input", e => {
+        if(!e.target.classList.contains("custom-qty-input-row")) return;
+        const id = e.target.dataset.id;
+        const p = PRODUCTS.find(x => x.id === id);
+        if(!p) return;
+        let v = parseInt(e.target.value, 10);
+        if(isNaN(v) || v < 0) v = 0;
+        v = Math.min(v, maxCustomAllowed(p));
+        if(v <= 0) delete customBoxData[id]; else customBoxData[id] = v;
+        e.target.value = v;
+        updateCustomProgress(size);
+        applyStockToRow(p);
+        recalc();
+      });
+
+      renderCustomList(size);
+      updateCustomProgress(size);
+    });
   }
 
   function renderCatalog(){
@@ -628,47 +942,24 @@
       return;
     }
 
-    PRODUCTS_BY_SIZE.forEach((group, idx) => {
-      const section = document.createElement("section");
-      const label = SIZE_LABELS[group.size] || group.size;
-      const num = String(idx + 2).padStart(2, "0"); // sección 01 es "Tus datos"
-      section.innerHTML = `
-        <h2 class="section-title"><span class="num">${num}</span> ${label}</h2>
-        <div class="rule"></div>
-        <table class="products">
-          <thead>
-            <tr>
-              <th>Producto (${group.size})</th>
-              <th class="num-col">Precio</th>
-              <th class="num-col">Cantidad</th>
-            </tr>
-          </thead>
-          <tbody id="rows-${idx}"></tbody>
-        </table>
-      `;
-      container.appendChild(section);
-      const tbody = section.querySelector(`#rows-${idx}`);
-      group.items.forEach(p => renderProductRow(p, tbody));
+    let sectionNum = 2; // la sección 01 es "Tus datos"
 
-      tbody.addEventListener("click", e => {
-        const btn = e.target.closest(".qty-btn");
-        if(!btn) return;
-        const id = btn.dataset.id;
-        const input = document.getElementById(`qty-${id}`);
-        let v = getQty(id);
-        v = btn.dataset.action === "plus" ? v + 1 : Math.max(0, v - 1);
-        v = clampToStock(id, v);
-        input.value = v;
-        recalc();
-      });
+    // 1. Cajas de sabor único (500ml, 1L), en ese orden
+    BOXABLE_SIZES.forEach(size => {
+      const group = PRODUCTS_BY_SIZE.find(g => g.size === size);
+      if(group) renderProductSection(group, sectionNum++, container, true);
+    });
 
-      tbody.addEventListener("input", e => {
-        if(e.target.classList.contains("qty-input")){
-          const id = e.target.dataset.id;
-          e.target.value = clampToStock(id, getQty(id));
-          recalc();
-        }
-      });
+    // 2. Caja personalizada (solo para los tamaños que existan en el catálogo)
+    const boxableSizesPresent = BOXABLE_SIZES.filter(size => PRODUCTS_BY_SIZE.some(g => g.size === size));
+    if(boxableSizesPresent.length > 0){
+      renderCustomBoxSection(container, boxableSizesPresent, sectionNum++);
+    }
+
+    // 3. El resto (Latas y cualquier otro tamaño), como venta por unidad, igual que antes
+    PRODUCTS_BY_SIZE.forEach(group => {
+      if(BOXABLE_SIZES.includes(group.size)) return; // ya renderizado arriba
+      renderProductSection(group, sectionNum++, container, false);
     });
 
     PRODUCTS.forEach(applyStockToRow);
@@ -710,7 +1001,6 @@
           };
         });
 
-      PRODUCTS.forEach(p => { currentStock[p.id] = p.stock; });
       PRODUCTS_BY_SIZE = groupBySize(PRODUCTS);
       renderCatalog();
     }catch(err){
@@ -743,12 +1033,21 @@
 
     const faltanDatos = !nombre || !telefono;
 
+    // Cajas de sabor único (y productos por unidad, como las latas)
     const groupsWithItems = PRODUCTS_BY_SIZE.map(g => ({
       size: g.size,
+      boxable: isBoxable(g.size),
       items: g.items.map(p => ({ ...p, qty: getQty(p.id) })).filter(p => p.qty > 0),
     })).filter(g => g.items.length > 0);
 
-    if(faltanDatos || groupsWithItems.length === 0){
+    // Caja personalizada, por tamaño
+    const customGroups = BOXABLE_SIZES.map(size => ({
+      size,
+      items: PRODUCTS.filter(p => p.size === size && (customBoxData[p.id] || 0) > 0)
+        .map(p => ({ ...p, qty: customBoxData[p.id] })),
+    })).filter(g => g.items.length > 0);
+
+    if(faltanDatos || (groupsWithItems.length === 0 && customGroups.length === 0)){
       showToast("error", faltanDatos
         ? "Completá tu nombre y teléfono para continuar."
         : "Elegí al menos un producto para enviar el pedido.");
@@ -764,23 +1063,60 @@
     groupsWithItems.forEach(g => {
       msg += `*${SIZE_LABELS[g.size] || g.size}*\n`;
       g.items.forEach(p => {
+        if(g.boxable){
+          msg += `• ${p.name} x${p.qty} caja(s) de ${UNITS_PER_BOX} — ${fmt(p.qty * p.price * UNITS_PER_BOX)}\n`;
+        } else {
+          msg += `• ${p.name} x${p.qty} — ${fmt(p.qty * p.price)}\n`;
+        }
+      });
+      msg += `\n`;
+    });
+
+    customGroups.forEach(g => {
+      const totalBotellas = g.items.reduce((s, p) => s + p.qty, 0);
+      msg += `*Caja personalizada — ${shortSizeLabel(g.size)}* (${totalBotellas} botellas)\n`;
+      g.items.forEach(p => {
         msg += `• ${p.name} x${p.qty} — ${fmt(p.qty * p.price)}\n`;
       });
       msg += `\n`;
     });
+
     msg += `*Total: ${fmt(total)}*`;
 
-    logOrder(nombre, telefono, groupsWithItems, total);
+    // Ítems planos para el historial y descuento de stock, siempre en unidades de botella
+    const logItems = [];
+    groupsWithItems.forEach(g => {
+      g.items.forEach(p => {
+        const bottles = g.boxable ? p.qty * UNITS_PER_BOX : p.qty;
+        logItems.push({ id: p.id, name: p.name, size: g.size, qty: bottles, price: p.price });
+      });
+    });
+    customGroups.forEach(g => {
+      g.items.forEach(p => {
+        logItems.push({ id: p.id, name: p.name, size: `${g.size} (personalizada)`, qty: p.qty, price: p.price });
+      });
+    });
+
+    logOrder(nombre, telefono, logItems, total);
 
     showToast("success", "¡Listo! Te llevamos a WhatsApp con tu pedido armado — confirmá el envío ahí para completarlo.");
 
     const waUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, "_blank");
 
+    // Reiniciar el carrito: cajas de sabor único, latas y caja personalizada
     PRODUCTS.forEach(p => {
       const el = document.getElementById(`qty-${p.id}`);
       if(el) el.value = 0;
     });
+    Object.keys(customBoxData).forEach(id => delete customBoxData[id]);
+    BOXABLE_SIZES.forEach(size => {
+      if(document.getElementById(`customlist-${size}`)){
+        renderCustomList(size);
+        updateCustomProgress(size);
+      }
+    });
+    PRODUCTS.forEach(applyStockToRow);
     recalc();
   });
 </script>
